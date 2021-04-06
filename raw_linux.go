@@ -89,7 +89,7 @@ func listenPacket(ifi *net.Interface, proto uint16, cfg Config) (*packetConn, er
 	}
 
 	// Wrap raw socket in socket interface.
-	pc, err := newPacketConn(ifi, &sysSocket{f: f, rc: sc}, htons(proto), cfg.Filter)
+	pc, err := newPacketConn(ifi, &sysSocket{f: f, rc: sc}, htons(proto), cfg.Filter, cfg.Host)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func listenPacket(ifi *net.Interface, proto uint16, cfg Config) (*packetConn, er
 // interface, wrapped socket and big endian protocol number.
 //
 // It is the entry point for tests in this package.
-func newPacketConn(ifi *net.Interface, s socket, pbe uint16, filter []bpf.RawInstruction) (*packetConn, error) {
+func newPacketConn(ifi *net.Interface, s socket, pbe uint16, filter []bpf.RawInstruction, host bool) (*packetConn, error) {
 	pc := &packetConn{
 		ifi: ifi,
 		s:   s,
@@ -115,6 +115,11 @@ func newPacketConn(ifi *net.Interface, s socket, pbe uint16, filter []bpf.RawIns
 		}
 	}
 
+	var pkttype uint8 = 0
+	if host {
+		pkttype = unix.PACKET_HOST
+	}
+
 	// Bind the packet socket to the interface specified by ifi
 	// packet(7):
 	//   Only the sll_protocol and the sll_ifindex address fields are used for
@@ -123,6 +128,7 @@ func newPacketConn(ifi *net.Interface, s socket, pbe uint16, filter []bpf.RawIns
 	err := s.Bind(&unix.SockaddrLinklayer{
 		Protocol: pc.pbe,
 		Ifindex:  ifi.Index,
+		Pkttype:  pkttype,
 	})
 	if err != nil {
 		return nil, err

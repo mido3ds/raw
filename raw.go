@@ -156,4 +156,6 @@ type Config struct {
 	// only (0 - default) or bidirectional (1) packet processing.
 	// Has no effect on other operating systems.
 	BPFDirection int
+
+	Host bool
 }
